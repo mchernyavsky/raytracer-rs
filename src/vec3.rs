@@ -1,6 +1,6 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Vec3 {
     x: f32,
     y: f32,
@@ -30,6 +30,10 @@ impl Vec3 {
 
     pub fn squared_length(&self) -> f32 {
         self.dot(*self)
+    }
+
+    pub fn to_unit_vec(self) -> Self {
+        self / self.length()
     }
 
     pub fn dot(self, other: Self) -> f32 {
