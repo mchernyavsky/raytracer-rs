@@ -31,32 +31,12 @@ impl Vec3 {
     pub fn squared_length(&self) -> f32 {
         self.dot(*self)
     }
-}
 
-trait Dot<Rhs = Self> {
-    type Output;
-
-    fn dot(self, other: Rhs) -> Self::Output;
-}
-
-impl Dot for Vec3 {
-    type Output = f32;
-
-    fn dot(self, other: Self) -> Self::Output {
+    pub fn dot(self, other: Self) -> f32 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
-}
 
-trait Cross<Rhs = Self> {
-    type Output;
-
-    fn cross(self, rhs: Rhs) -> Self::Output;
-}
-
-impl Cross for Vec3 {
-    type Output = Self;
-
-    fn cross(self, other: Self) -> Self::Output {
+    pub fn cross(self, other: Self) -> Self {
         Self {
             x: self.y * other.z - self.z * other.y,
             y: -(self.x * other.z - self.z * other.x),
@@ -80,12 +60,9 @@ impl Neg for Vec3 {
 impl Add for Vec3 {
     type Output = Self;
 
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-            z: self.z + rhs.z,
-        }
+    fn add(mut self, rhs: Self) -> Self::Output {
+        self += rhs;
+        self
     }
 }
 
@@ -100,12 +77,9 @@ impl AddAssign for Vec3 {
 impl Sub for Vec3 {
     type Output = Self;
 
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self {
-            x: self.x - rhs.x,
-            y: self.y - rhs.y,
-            z: self.z - rhs.z,
-        }
+    fn sub(mut self, rhs: Self) -> Self::Output {
+        self -= rhs;
+        self
     }
 }
 
@@ -120,12 +94,9 @@ impl SubAssign for Vec3 {
 impl Mul for Vec3 {
     type Output = Self;
 
-    fn mul(self, rhs: Self) -> Self::Output {
-        Self {
-            x: self.x * rhs.x,
-            y: self.y * rhs.y,
-            z: self.z * rhs.z,
-        }
+    fn mul(mut self, rhs: Self) -> Self::Output {
+        self *= rhs;
+        self
     }
 }
 
@@ -140,12 +111,9 @@ impl MulAssign for Vec3 {
 impl Mul<f32> for Vec3 {
     type Output = Self;
 
-    fn mul(self, rhs: f32) -> Self::Output {
-        Self {
-            x: self.x * rhs,
-            y: self.y * rhs,
-            z: self.z * rhs,
-        }
+    fn mul(mut self, rhs: f32) -> Self::Output {
+        self *= rhs;
+        self
     }
 }
 
@@ -168,12 +136,9 @@ impl MulAssign<f32> for Vec3 {
 impl Div<f32> for Vec3 {
     type Output = Self;
 
-    fn div(self, rhs: f32) -> Self::Output {
-        Self {
-            x: self.x / rhs,
-            y: self.y / rhs,
-            z: self.z / rhs,
-        }
+    fn div(mut self, rhs: f32) -> Self::Output {
+        self /= rhs;
+        self
     }
 }
 
@@ -191,10 +156,13 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let Vec3 { x, y, z } = Vec3::new(1.0, 2.0, 3.0);
-        assert_eq!(x, 1.0);
-        assert_eq!(y, 2.0);
-        assert_eq!(z, 3.0);
+        let actual = Vec3::new(1.0, 2.0, 3.0);
+        let expected = Vec3 {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        };
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -251,20 +219,18 @@ mod tests {
     #[test]
     fn test_neg() {
         let i = Vec3::new(0.0, 1.0, -1.0);
-        let j = -i;
-        assert_eq!(j.x(), 0.0);
-        assert_eq!(j.y(), -1.0);
-        assert_eq!(j.z(), 1.0);
+        let actual = -i;
+        let expected = Vec3::new(0.0, -1.0, 1.0);
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn test_add() {
         let i = Vec3::new(1.0, 0.0, 0.0);
         let j = Vec3::new(0.0, 1.0, 0.0);
-        let k = i + j;
-        assert_eq!(k.x(), 1.0);
-        assert_eq!(k.y(), 1.0);
-        assert_eq!(k.z(), 0.0);
+        let actual = i + j;
+        let expected = Vec3::new(1.0, 1.0, 0.0);
+        assert_eq!(actual, expected)
     }
 
     #[test]
@@ -272,19 +238,17 @@ mod tests {
         let mut i = Vec3::new(1.0, 0.0, 0.0);
         let j = Vec3::new(0.0, 1.0, 0.0);
         i += j;
-        assert_eq!(i.x(), 1.0);
-        assert_eq!(i.y(), 1.0);
-        assert_eq!(i.z(), 0.0);
+        let expected = Vec3::new(1.0, 1.0, 0.0);
+        assert_eq!(i, expected);
     }
 
     #[test]
     fn test_sub() {
         let i = Vec3::new(1.0, 0.0, 0.0);
         let j = Vec3::new(0.0, 1.0, 0.0);
-        let k = i - j;
-        assert_eq!(k.x(), 1.0);
-        assert_eq!(k.y(), -1.0);
-        assert_eq!(k.z(), 0.0);
+        let actual = i - j;
+        let expected = Vec3::new(1.0, -1.0, 0.0);
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -292,19 +256,17 @@ mod tests {
         let mut i = Vec3::new(1.0, 0.0, 0.0);
         let j = Vec3::new(0.0, 1.0, 0.0);
         i -= j;
-        assert_eq!(i.x(), 1.0);
-        assert_eq!(i.y(), -1.0);
-        assert_eq!(i.z(), 0.0);
+        let expected = Vec3::new(1.0, -1.0, 0.0);
+        assert_eq!(i, expected);
     }
 
     #[test]
     fn test_mul() {
         let i = Vec3::new(-2.0, -3.0, 1.0);
         let j = Vec3::new(4.0, -5.0, 0.0);
-        let k = i * j;
-        assert_eq!(k.x(), -8.0);
-        assert_eq!(k.y(), 15.0);
-        assert_eq!(k.z(), 0.0);
+        let actual = i * j;
+        let expected = Vec3::new(-8.0, 15.0, 0.0);
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -312,48 +274,41 @@ mod tests {
         let mut i = Vec3::new(-2.0, -3.0, 1.0);
         let j = Vec3::new(4.0, -5.0, 0.0);
         i *= j;
-        assert_eq!(i.x(), -8.0);
-        assert_eq!(i.y(), 15.0);
-        assert_eq!(i.z(), 0.0);
+        let expected = Vec3::new(-8.0, 15.0, 0.0);
+        assert_eq!(i, expected);
     }
 
     #[test]
     fn test_mul_scalar() {
         let i = Vec3::new(1.0, -2.0, 0.0);
-        let j = i * 2.0;
-        let k = 2.0 * i;
-        assert_eq!(j.x(), 2.0);
-        assert_eq!(j.y(), -4.0);
-        assert_eq!(j.z(), 0.0);
-        assert_eq!(k.x(), 2.0);
-        assert_eq!(k.y(), -4.0);
-        assert_eq!(k.z(), 0.0);
+        let actual1 = i * 2.0;
+        let actual2 = 2.0 * i;
+        let expected = Vec3::new(2.0, -4.0, 0.0);
+        assert_eq!(actual1, expected);
+        assert_eq!(actual2, expected);
     }
 
     #[test]
     fn test_mul_assign_scalar() {
         let mut i = Vec3::new(1.0, -2.0, 0.0);
         i *= 2.0;
-        assert_eq!(i.x(), 2.0);
-        assert_eq!(i.y(), -4.0);
-        assert_eq!(i.z(), 0.0);
+        let expected = Vec3::new(2.0, -4.0, 0.0);
+        assert_eq!(i, expected);
     }
 
     #[test]
     fn test_div_scalar() {
         let i = Vec3::new(2.0, -4.0, 0.0);
-        let j = i / 2.0;
-        assert_eq!(j.x(), 1.0);
-        assert_eq!(j.y(), -2.0);
-        assert_eq!(j.z(), 0.0);
+        let actual = i / 2.0;
+        let expected = Vec3::new(1.0, -2.0, 0.0);
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn test_div_assign_scalar() {
         let mut i = Vec3::new(2.0, -4.0, 0.0);
         i /= 2.0;
-        assert_eq!(i.x(), 1.0);
-        assert_eq!(i.y(), -2.0);
-        assert_eq!(i.z(), 0.0);
+        let expected = Vec3::new(1.0, -2.0, 0.0);
+        assert_eq!(i, expected);
     }
 }
