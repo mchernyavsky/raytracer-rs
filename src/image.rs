@@ -1,6 +1,6 @@
 use crate::Color;
-use std::fmt::{Display, Error, Formatter};
-use std::ops::{Deref, Index, IndexMut};
+use std::io::{Error, Write};
+use std::ops::{Index, IndexMut};
 
 type Point = (u32, u32);
 
@@ -51,33 +51,17 @@ impl IndexMut<Point> for Image {
     }
 }
 
-struct PPMImage(Image);
+pub fn write_ppm<W: Write>(image: Image, output: &mut W) -> Result<(), Error> {
+    writeln!(output, "P3")?;
+    writeln!(output, "{} {}", image.width, image.height)?;
+    writeln!(output, "255")?;
 
-impl Deref for PPMImage {
-    type Target = Image;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Display for PPMImage {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        writeln!(f, "P3")?;
-        writeln!(f, "{} {}", self.width, self.height)?;
-        writeln!(f, "255")?;
-
-        for y in (0..self.height).rev() {
-            for x in 0..self.width {
-                let color = self[(x, y)];
-                writeln!(f, "{} {} {}", color.red(), color.green(), color.blue())?;
-            }
+    for y in (0..image.height).rev() {
+        for x in 0..image.width {
+            let color = image[(x, y)];
+            writeln!(output, "{} {} {}", color.red(), color.green(), color.blue())?;
         }
-
-        Ok(())
     }
-}
 
-pub fn print_as_ppm(image: Image) {
-    print!("{}", PPMImage(image))
+    Ok(())
 }
