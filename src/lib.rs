@@ -1,12 +1,14 @@
+mod camera;
 mod color;
-mod hitable;
+mod hit;
 mod image;
 mod ray;
 mod sphere;
 mod vec3;
 
+pub use crate::camera::Camera;
 pub use crate::color::{Color, RED};
-pub use crate::hitable::Hitable;
+pub use crate::hit::{Hit, HitList};
 pub use crate::image::{write_ppm, Image};
 pub use crate::ray::Ray;
 pub use crate::sphere::Sphere;

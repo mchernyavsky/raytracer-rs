@@ -1,34 +1,34 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Vec3 {
-    x: f32,
-    y: f32,
-    z: f32,
+    x: f64,
+    y: f64,
+    z: f64,
 }
 
 impl Vec3 {
-    pub fn new(x: f32, y: f32, z: f32) -> Self {
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
 
-    pub fn x(&self) -> f32 {
+    pub fn x(&self) -> f64 {
         self.x
     }
 
-    pub fn y(&self) -> f32 {
+    pub fn y(&self) -> f64 {
         self.y
     }
 
-    pub fn z(&self) -> f32 {
+    pub fn z(&self) -> f64 {
         self.z
     }
 
-    pub fn length(&self) -> f32 {
+    pub fn length(&self) -> f64 {
         self.squared_length().sqrt()
     }
 
-    pub fn squared_length(&self) -> f32 {
+    pub fn squared_length(&self) -> f64 {
         self.dot(*self)
     }
 
@@ -36,7 +36,7 @@ impl Vec3 {
         self / self.length()
     }
 
-    pub fn dot(self, other: Self) -> f32 {
+    pub fn dot(self, other: Self) -> f64 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
@@ -112,16 +112,16 @@ impl MulAssign for Vec3 {
     }
 }
 
-impl Mul<f32> for Vec3 {
+impl Mul<f64> for Vec3 {
     type Output = Self;
 
-    fn mul(mut self, rhs: f32) -> Self::Output {
+    fn mul(mut self, rhs: f64) -> Self::Output {
         self *= rhs;
         self
     }
 }
 
-impl Mul<Vec3> for f32 {
+impl Mul<Vec3> for f64 {
     type Output = Vec3;
 
     fn mul(self, rhs: Vec3) -> Self::Output {
@@ -129,25 +129,25 @@ impl Mul<Vec3> for f32 {
     }
 }
 
-impl MulAssign<f32> for Vec3 {
-    fn mul_assign(&mut self, rhs: f32) {
+impl MulAssign<f64> for Vec3 {
+    fn mul_assign(&mut self, rhs: f64) {
         self.x *= rhs;
         self.y *= rhs;
         self.z *= rhs;
     }
 }
 
-impl Div<f32> for Vec3 {
+impl Div<f64> for Vec3 {
     type Output = Self;
 
-    fn div(mut self, rhs: f32) -> Self::Output {
+    fn div(mut self, rhs: f64) -> Self::Output {
         self /= rhs;
         self
     }
 }
 
-impl DivAssign<f32> for Vec3 {
-    fn div_assign(&mut self, rhs: f32) {
+impl DivAssign<f64> for Vec3 {
+    fn div_assign(&mut self, rhs: f64) {
         self.x /= rhs;
         self.y /= rhs;
         self.z /= rhs;
@@ -180,7 +180,7 @@ mod tests {
     #[test]
     fn test_length() {
         let i = Vec3::new(-2.0, -3.0, -5.0);
-        let length = ((-2.0f32 * -2.0) + (-3.0 * -3.0) + (-5.0 * -5.0)).sqrt();
+        let length = ((-2.0f64 * -2.0) + (-3.0 * -3.0) + (-5.0 * -5.0)).sqrt();
         assert_eq!(i.length(), length);
         assert_eq!((i * 2.0).length(), 2.0 * length);
         assert_eq!(i.length(), i.squared_length().sqrt());
