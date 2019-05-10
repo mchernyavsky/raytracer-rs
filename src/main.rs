@@ -1,37 +1,15 @@
 #![feature(try_blocks)]
 
-extern crate rand;
-
+use rayon::prelude::*;
 use std::fs::File;
 use std::io::Write;
 use std::{env, io};
 
-use rand::distributions::{Distribution, UnitSphereSurface};
 use rand::Rng;
-use raytracer::{write_ppm, Camera, Color, Hit, HitList, Image, Ray, Sphere, Vec3, RED};
-
-fn color_vec_at<T: Hit>(ray: &Ray, world: &T) -> Vec3 {
-    if let Some(record) = world.hit(ray, 0.001, std::f64::MAX) {
-        let target = record.point() + record.normal() + random_in_unit_sphere();
-        0.5 * color_vec_at(&Ray::new(record.point(), target - record.point()), world)
-    } else {
-        let unit_direction = ray.direction().to_unit_vec();
-        let t = 0.5 * (unit_direction.y() + 1.0);
-        (1.0 - t) * Vec3::new(1.0, 1.0, 1.0) + t * Vec3::new(0.5, 0.7, 1.0)
-    }
-}
-
-fn random_in_unit_sphere() -> Vec3 {
-    let sphere = UnitSphereSurface::new();
-    let [x, y, z] = sphere.sample(&mut rand::thread_rng());
-    Vec3::new(x, y, z)
-}
-
-fn vec_to_color(vec: Vec3) -> Color {
-    const COLOR_SCALE: f64 = 254.99;
-    let vec = COLOR_SCALE * Vec3::new(vec.x().sqrt(), vec.y().sqrt(), vec.z().sqrt());
-    Color::new(vec.x() as u8, vec.y() as u8, vec.z() as u8)
-}
+use raytracer::{
+    write_ppm, Camera, Color, Hit, HitList, Image, Lambertian, Metal, Ray, Sphere, Vec3,
+};
+use std::sync::Arc;
 
 enum Error {
     ParseError(String),
@@ -44,6 +22,14 @@ impl From<io::Error> for Error {
     }
 }
 
+fn handle_error(err: &Error) -> i32 {
+    match err {
+        Error::ParseError(parse_err_msg) => eprintln!("{}", parse_err_msg),
+        Error::IOError(io_err) => eprintln!("{}", io_err),
+    };
+    1
+}
+
 fn get_output_file_name() -> Result<Option<String>, Error> {
     let args: Vec<_> = env::args().collect();
     let filename = match args.len() {
@@ -54,45 +40,91 @@ fn get_output_file_name() -> Result<Option<String>, Error> {
     Ok(filename)
 }
 
-fn draw_sphere<W: Write>(output: &mut W) -> Result<(), Error> {
-    let mut rng = rand::thread_rng();
-    let mut image = Image::with_background(200, 100, RED);
-    let n_samples = 100;
-
-    let camera = Camera::new(
+fn make_camera() -> Camera {
+    Camera::new(
         Vec3::new(-2.0, -1.0, -1.0),
         Vec3::new(4.0, 0.0, 0.0),
         Vec3::new(0.0, 2.0, 0.0),
         Vec3::new(0.0, 0.0, 0.0),
-    );
+    )
+}
 
+fn make_world() -> HitList {
     let mut world = HitList::new();
-    world.push(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5));
-    world.push(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0));
+    world.push(Sphere::new(
+        Vec3::new(0.0, 0.0, -1.0),
+        0.5,
+        Arc::new(Lambertian::new(Vec3::new(0.8, 0.3, 0.3))),
+    ));
+    world.push(Sphere::new(
+        Vec3::new(0.0, -100.5, -1.0),
+        100.0,
+        Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0))),
+    ));
+    world.push(Sphere::new(
+        Vec3::new(1.0, 0.0, -1.0),
+        0.5,
+        Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.3)),
+    ));
+    world.push(Sphere::new(
+        Vec3::new(-1.0, 0.0, -1.0),
+        0.5,
+        Arc::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 1.0)),
+    ));
+    world
+}
 
-    for y in (0..image.height()).rev() {
-        for x in 0..image.width() {
-            let mut acc = Vec3::default();
-            for _ in 0..n_samples {
-                let u = (f64::from(x) + rng.gen::<f64>()) / f64::from(image.width());
-                let v = (f64::from(y) + rng.gen::<f64>()) / f64::from(image.height());
-                let ray = camera.get_ray(u, v);
-                acc += color_vec_at(&ray, &world);
-            }
-            image[(x, y)] = vec_to_color(acc / f64::from(n_samples));
-        }
-    }
+const IMAGE_WIDTH: u32 = 200;
+const IMAGE_HEIGHT: u32 = 100;
 
+fn draw_sphere<W: Write>(output: &mut W) -> Result<(), Error> {
+    let camera = make_camera();
+    let world = make_world();
+    let pixels: Vec<_> = (0..(IMAGE_WIDTH * IMAGE_HEIGHT))
+        .into_par_iter()
+        .map(|idx| calc_pixel(idx % IMAGE_WIDTH, idx / IMAGE_WIDTH, &camera, &world))
+        .collect();
+    let image = Image::with_data(IMAGE_WIDTH, IMAGE_HEIGHT, pixels.into_boxed_slice());
     write_ppm(image, output)?;
     Ok(())
 }
 
-fn handle_error(err: &Error) -> i32 {
-    match err {
-        Error::ParseError(parse_err_msg) => eprintln!("{}", parse_err_msg),
-        Error::IOError(io_err) => eprintln!("{}", io_err),
-    };
-    1
+fn calc_pixel(x: u32, y: u32, camera: &Camera, world: &HitList) -> Color {
+    const N_SAMPLES: u32 = 100;
+    let mut rng = rand::thread_rng();
+    let mut acc = Vec3::default();
+    for _ in 0..N_SAMPLES {
+        let u = (f64::from(x) + rng.gen::<f64>()) / f64::from(IMAGE_WIDTH);
+        let v = (f64::from(y) + rng.gen::<f64>()) / f64::from(IMAGE_HEIGHT);
+        let ray = camera.get_ray(u, v);
+        acc += color_vec_at(&ray, world, 0);
+    }
+    vec_to_color(acc / f64::from(N_SAMPLES))
+}
+
+fn color_vec_at<T: Hit>(ray: &Ray, world: &T, depth: u32) -> Vec3 {
+    const MAX_DEPTH: u32 = 50;
+    if let Some(hit) = world.hit(ray, 0.001, std::f64::MAX) {
+        if depth >= MAX_DEPTH {
+            return Vec3::default();
+        }
+
+        if let Some(scattered) = hit.material().scatter(ray, &hit) {
+            scattered.attenuation() * color_vec_at(&scattered.ray(), world, depth + 1)
+        } else {
+            Vec3::default()
+        }
+    } else {
+        let unit_direction = ray.direction().normalize();
+        let t = 0.5 * (unit_direction.y() + 1.0);
+        (1.0 - t) * Vec3::new(1.0, 1.0, 1.0) + t * Vec3::new(0.5, 0.7, 1.0)
+    }
+}
+
+fn vec_to_color(vec: Vec3) -> Color {
+    const COLOR_SCALE: f64 = 254.99;
+    let vec = COLOR_SCALE * Vec3::new(vec.x().sqrt(), vec.y().sqrt(), vec.z().sqrt());
+    Color::new(vec.x() as u8, vec.y() as u8, vec.z() as u8)
 }
 
 fn main() {

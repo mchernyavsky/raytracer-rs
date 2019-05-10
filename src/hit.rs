@@ -1,14 +1,22 @@
+use crate::material::Scatter;
 use crate::{Ray, Vec3};
+use std::sync::Arc;
 
 pub struct HitRecord {
     t: f64,
     point: Vec3,
     normal: Vec3,
+    material: Arc<dyn Scatter>,
 }
 
 impl HitRecord {
-    pub fn new(t: f64, point: Vec3, normal: Vec3) -> Self {
-        Self { t, point, normal }
+    pub fn new(t: f64, point: Vec3, normal: Vec3, material: Arc<dyn Scatter>) -> Self {
+        Self {
+            t,
+            point,
+            normal,
+            material,
+        }
     }
 
     pub fn t(&self) -> f64 {
@@ -22,28 +30,32 @@ impl HitRecord {
     pub fn normal(&self) -> Vec3 {
         self.normal
     }
+
+    pub fn material(&self) -> Arc<dyn Scatter> {
+        Arc::clone(&self.material)
+    }
 }
 
-pub trait Hit {
+pub trait Hit: Send + Sync {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
 }
 
 #[derive(Default)]
-pub struct HitList<'a> {
-    data: Vec<Box<Hit + 'a>>,
+pub struct HitList {
+    data: Vec<Box<dyn Hit>>,
 }
 
-impl<'a> HitList<'a> {
+impl HitList {
     pub fn new() -> Self {
-        Default::default()
+        Self::default()
     }
 
-    pub fn push<T: Hit + 'a>(&mut self, value: T) {
+    pub fn push<T: Hit + 'static>(&mut self, value: T) {
         self.data.push(Box::new(value))
     }
 }
 
-impl<'a> Hit for HitList<'a> {
+impl Hit for HitList {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
         let mut record = None;
         let mut closest_so_far = t_max;

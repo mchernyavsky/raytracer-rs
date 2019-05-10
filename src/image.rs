@@ -16,8 +16,17 @@ impl Image {
     }
 
     pub fn with_background(width: u32, height: u32, background: Color) -> Self {
+        Self::with_data(
+            width,
+            height,
+            vec![background; (width * height) as usize].into_boxed_slice(),
+        )
+    }
+
+    pub fn with_data(width: u32, height: u32, buffer: Box<[Color]>) -> Self {
+        assert_eq!(width * height, buffer.len() as u32);
         Self {
-            buffer: vec![background; (width * height) as usize].into_boxed_slice(),
+            buffer,
             width,
             height,
         }

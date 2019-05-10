@@ -32,7 +32,7 @@ impl Vec3 {
         self.dot(*self)
     }
 
-    pub fn to_unit_vec(self) -> Self {
+    pub fn normalize(self) -> Self {
         self / self.length()
     }
 
