@@ -1,4 +1,6 @@
 use crate::Color;
+use rayon::iter::IntoParallelRefMutIterator;
+use rayon::slice::IterMut;
 use std::io::{Error, Write};
 use std::ops::{Index, IndexMut};
 
@@ -16,17 +18,8 @@ impl Image {
     }
 
     pub fn with_background(width: u32, height: u32, background: Color) -> Self {
-        Self::with_data(
-            width,
-            height,
-            vec![background; (width * height) as usize].into_boxed_slice(),
-        )
-    }
-
-    pub fn with_data(width: u32, height: u32, buffer: Box<[Color]>) -> Self {
-        assert_eq!(width * height, buffer.len() as u32);
         Self {
-            buffer,
+            buffer: vec![background; (width * height) as usize].into_boxed_slice(),
             width,
             height,
         }
@@ -38,6 +31,10 @@ impl Image {
 
     pub fn height(&self) -> u32 {
         self.height
+    }
+
+    pub fn pixels(&mut self) -> IterMut<Color> {
+        self.buffer.par_iter_mut()
     }
 
     fn point_to_index(&self, (x, y): Point) -> usize {

@@ -1,6 +1,3 @@
-extern crate rand;
-extern crate rayon;
-
 mod camera;
 mod color;
 mod hit;

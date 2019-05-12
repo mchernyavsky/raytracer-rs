@@ -1,14 +1,14 @@
 #![feature(try_blocks)]
 
 use rayon::prelude::*;
-use std::fs::File;
 use std::io::Write;
 use std::{env, io};
 
 use rand::Rng;
 use raytracer::{
-    write_ppm, Camera, Color, Hit, HitList, Image, Lambertian, Metal, Ray, Sphere, Vec3,
+    write_ppm, Camera, Color, Hit, HitList, Image, Lambertian, Metal, Ray, Sphere, Vec3, RED,
 };
+use std::fs::File;
 use std::sync::Arc;
 
 enum Error {
@@ -40,91 +40,93 @@ fn get_output_file_name() -> Result<Option<String>, Error> {
     Ok(filename)
 }
 
-fn make_camera() -> Camera {
-    Camera::new(
-        Vec3::new(-2.0, -1.0, -1.0),
-        Vec3::new(4.0, 0.0, 0.0),
-        Vec3::new(0.0, 2.0, 0.0),
-        Vec3::new(0.0, 0.0, 0.0),
-    )
-}
-
-fn make_world() -> HitList {
-    let mut world = HitList::new();
-    world.push(Sphere::new(
-        Vec3::new(0.0, 0.0, -1.0),
-        0.5,
-        Arc::new(Lambertian::new(Vec3::new(0.8, 0.3, 0.3))),
-    ));
-    world.push(Sphere::new(
-        Vec3::new(0.0, -100.5, -1.0),
-        100.0,
-        Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0))),
-    ));
-    world.push(Sphere::new(
-        Vec3::new(1.0, 0.0, -1.0),
-        0.5,
-        Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.3)),
-    ));
-    world.push(Sphere::new(
-        Vec3::new(-1.0, 0.0, -1.0),
-        0.5,
-        Arc::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 1.0)),
-    ));
-    world
-}
-
-const IMAGE_WIDTH: u32 = 200;
-const IMAGE_HEIGHT: u32 = 100;
-
 fn draw_sphere<W: Write>(output: &mut W) -> Result<(), Error> {
     let camera = make_camera();
     let world = make_world();
-    let pixels: Vec<_> = (0..(IMAGE_WIDTH * IMAGE_HEIGHT))
-        .into_par_iter()
-        .map(|idx| calc_pixel(idx % IMAGE_WIDTH, idx / IMAGE_WIDTH, &camera, &world))
-        .collect();
-    let image = Image::with_data(IMAGE_WIDTH, IMAGE_HEIGHT, pixels.into_boxed_slice());
+    let mut image = Image::with_background(IMAGE_WIDTH, IMAGE_HEIGHT, RED);
+    image
+        .pixels()
+        .enumerate()
+        .for_each(|(idx, pixel)| *pixel = calc_pixel(idx, &camera, &world));
     write_ppm(image, output)?;
-    Ok(())
-}
+    return Ok(());
 
-fn calc_pixel(x: u32, y: u32, camera: &Camera, world: &HitList) -> Color {
-    const N_SAMPLES: u32 = 100;
-    let mut rng = rand::thread_rng();
-    let mut acc = Vec3::default();
-    for _ in 0..N_SAMPLES {
-        let u = (f64::from(x) + rng.gen::<f64>()) / f64::from(IMAGE_WIDTH);
-        let v = (f64::from(y) + rng.gen::<f64>()) / f64::from(IMAGE_HEIGHT);
-        let ray = camera.get_ray(u, v);
-        acc += color_vec_at(&ray, world, 0);
+    const IMAGE_WIDTH: u32 = 200;
+    const IMAGE_HEIGHT: u32 = 100;
+
+    fn make_camera() -> Camera {
+        Camera::new(
+            Vec3::new(-2.0, -1.0, -1.0),
+            Vec3::new(4.0, 0.0, 0.0),
+            Vec3::new(0.0, 2.0, 0.0),
+            Vec3::new(0.0, 0.0, 0.0),
+        )
     }
-    vec_to_color(acc / f64::from(N_SAMPLES))
-}
 
-fn color_vec_at<T: Hit>(ray: &Ray, world: &T, depth: u32) -> Vec3 {
-    const MAX_DEPTH: u32 = 50;
-    if let Some(hit) = world.hit(ray, 0.001, std::f64::MAX) {
-        if depth >= MAX_DEPTH {
-            return Vec3::default();
+    fn make_world() -> HitList {
+        let mut world = HitList::new();
+        world.push(Sphere::new(
+            Vec3::new(0.0, 0.0, -1.0),
+            0.5,
+            Arc::new(Lambertian::new(Vec3::new(0.8, 0.3, 0.3))),
+        ));
+        world.push(Sphere::new(
+            Vec3::new(0.0, -100.5, -1.0),
+            100.0,
+            Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0))),
+        ));
+        world.push(Sphere::new(
+            Vec3::new(1.0, 0.0, -1.0),
+            0.5,
+            Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.3)),
+        ));
+        world.push(Sphere::new(
+            Vec3::new(-1.0, 0.0, -1.0),
+            0.5,
+            Arc::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 1.0)),
+        ));
+        world
+    }
+
+    fn calc_pixel(idx: usize, camera: &Camera, world: &HitList) -> Color {
+        const N_SAMPLES: u32 = 100;
+        let mut rng = rand::thread_rng();
+        let x = idx as u32 % IMAGE_WIDTH;
+        let y = idx as u32 / IMAGE_WIDTH;
+        let mut acc = Vec3::default();
+        for _ in 0..N_SAMPLES {
+            let u = (f64::from(x) + rng.gen::<f64>()) / f64::from(IMAGE_WIDTH);
+            let v = (f64::from(y) + rng.gen::<f64>()) / f64::from(IMAGE_HEIGHT);
+            let ray = camera.get_ray(u, v);
+            acc += color_vec_at(&ray, world, 0);
+        }
+        return vec_to_color(acc / f64::from(N_SAMPLES));
+
+        fn color_vec_at<T: Hit>(ray: &Ray, world: &T, depth: u32) -> Vec3 {
+            const MAX_DEPTH: u32 = 50;
+            if let Some(hit) = world.hit(ray, 0.001, std::f64::MAX) {
+                if depth >= MAX_DEPTH {
+                    return Vec3::default();
+                }
+
+                if let Some(scattered) = hit.material().scatter(ray, &hit) {
+                    scattered.attenuation() * color_vec_at(&scattered.ray(), world, depth + 1)
+                } else {
+                    Vec3::default()
+                }
+            } else {
+                let unit_direction = ray.direction().normalize();
+                let t = 0.5 * (unit_direction.y() + 1.0);
+                (1.0 - t) * Vec3::new(1.0, 1.0, 1.0) + t * Vec3::new(0.5, 0.7, 1.0)
+            }
         }
 
-        if let Some(scattered) = hit.material().scatter(ray, &hit) {
-            scattered.attenuation() * color_vec_at(&scattered.ray(), world, depth + 1)
-        } else {
-            Vec3::default()
+        fn vec_to_color(vec: Vec3) -> Color {
+            const COLOR_SCALE: f64 = 254.99;
+            let vec = COLOR_SCALE * Vec3::new(vec.x().sqrt(), vec.y().sqrt(), vec.z().sqrt());
+            Color::new(vec.x() as u8, vec.y() as u8, vec.z() as u8)
         }
-    } else {
-        let unit_direction = ray.direction().normalize();
-        let t = 0.5 * (unit_direction.y() + 1.0);
-        (1.0 - t) * Vec3::new(1.0, 1.0, 1.0) + t * Vec3::new(0.5, 0.7, 1.0)
     }
-}
-
-fn vec_to_color(vec: Vec3) -> Color {
-    const COLOR_SCALE: f64 = 254.99;
-    let vec = COLOR_SCALE * Vec3::new(vec.x().sqrt(), vec.y().sqrt(), vec.z().sqrt());
-    Color::new(vec.x() as u8, vec.y() as u8, vec.z() as u8)
 }
 
 fn main() {

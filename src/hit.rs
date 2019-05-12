@@ -1,16 +1,15 @@
 use crate::material::Scatter;
 use crate::{Ray, Vec3};
-use std::sync::Arc;
 
-pub struct HitRecord {
+pub struct HitRecord<'a> {
     t: f64,
     point: Vec3,
     normal: Vec3,
-    material: Arc<dyn Scatter>,
+    material: &'a dyn Scatter,
 }
 
-impl HitRecord {
-    pub fn new(t: f64, point: Vec3, normal: Vec3, material: Arc<dyn Scatter>) -> Self {
+impl<'a> HitRecord<'a> {
+    pub fn new(t: f64, point: Vec3, normal: Vec3, material: &'a dyn Scatter) -> Self {
         Self {
             t,
             point,
@@ -31,8 +30,8 @@ impl HitRecord {
         self.normal
     }
 
-    pub fn material(&self) -> Arc<dyn Scatter> {
-        Arc::clone(&self.material)
+    pub fn material(&self) -> &dyn Scatter {
+        self.material
     }
 }
 
