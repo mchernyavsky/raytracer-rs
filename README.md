@@ -3,6 +3,10 @@
 A ray tracer implemented in Rust, based on [_Ray Tracing in One Weekend_](https://raytracing.github.io/books/RayTracingInOneWeekend.html) by Peter Shirley.
 
 ## Features
+1
+2
+3
+4
 
 - Diffuse (Lambertian) and metallic materials with configurable fuzz
 - Anti-aliasing via multi-sample averaging (100 samples per pixel)
