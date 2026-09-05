@@ -1,3 +1,5 @@
+//! Command-line front end that renders a fixed sphere scene to a PPM image.
+
 #![feature(try_blocks)]
 
 use rayon::prelude::*;
