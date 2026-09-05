@@ -129,6 +129,11 @@ fn draw_sphere<W: Write>(output: &mut W) -> Result<(), Error> {
     }
 }
 
+/// Entry point: renders the demo sphere scene as a PPM image.
+///
+/// With no arguments the image is written to stdout; with a single argument
+/// that argument is used as the output file name. Parse and I/O failures are
+/// reported on stderr and turned into a non-zero exit status.
 fn main() {
     let exit_code = {
         let res = try {
