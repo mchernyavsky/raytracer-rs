@@ -1,73 +1,73 @@
-use crate::Color;
-use rayon::iter::IntoParallelRefMutIterator;
-use rayon::slice::IterMut;
-use std::io::{Error, Write};
-use std::ops::{Index, IndexMut};
+    use crate::Color;
+    use rayon::iter::IntoParallelRefMutIterator;
+    use rayon::slice::IterMut;
+    use std::io::{Error, Write};
+    use std::ops::{Index, IndexMut};
 
-type Point = (u32, u32);
+    type Point = (u32, u32);
 
-pub struct Image {
-    buffer: Box<[Color]>,
-    width: u32,
-    height: u32,
-}
-
-impl Image {
-    pub fn new(width: u32, height: u32) -> Self {
-        Self::with_background(width, height, Color::default())
+    pub struct Image {
+        buffer: Box<[Color]>,
+        width: u32,
+        height: u32,
     }
 
-    pub fn with_background(width: u32, height: u32, background: Color) -> Self {
-        Self {
-            buffer: vec![background; (width * height) as usize].into_boxed_slice(),
-            width,
-            height,
+    impl Image {
+        pub fn new(width: u32, height: u32) -> Self {
+            Self::with_background(width, height, Color::default())
+        }
+
+        pub fn with_background(width: u32, height: u32, background: Color) -> Self {
+            Self {
+                buffer: vec![background; (width * height) as usize].into_boxed_slice(),
+                width,
+                height,
+            }
+        }
+
+        pub fn width(&self) -> u32 {
+            self.width
+        }
+
+        pub fn height(&self) -> u32 {
+            self.height
+        }
+
+        pub fn pixels(&mut self) -> IterMut<Color> {
+            self.buffer.par_iter_mut()
+        }
+
+        fn point_to_index(&self, (x, y): Point) -> usize {
+            assert!(x < self.width && y < self.height);
+            (y * self.width + x) as usize
         }
     }
 
-    pub fn width(&self) -> u32 {
-        self.width
-    }
+    impl Index<Point> for Image {
+        type Output = Color;
 
-    pub fn height(&self) -> u32 {
-        self.height
-    }
-
-    pub fn pixels(&mut self) -> IterMut<Color> {
-        self.buffer.par_iter_mut()
-    }
-
-    fn point_to_index(&self, (x, y): Point) -> usize {
-        assert!(x < self.width && y < self.height);
-        (y * self.width + x) as usize
-    }
-}
-
-impl Index<Point> for Image {
-    type Output = Color;
-
-    fn index(&self, point: Point) -> &Self::Output {
-        &self.buffer[self.point_to_index(point)]
-    }
-}
-
-impl IndexMut<Point> for Image {
-    fn index_mut(&mut self, point: Point) -> &mut Self::Output {
-        &mut self.buffer[self.point_to_index(point)]
-    }
-}
-
-pub fn write_ppm<W: Write>(image: Image, output: &mut W) -> Result<(), Error> {
-    writeln!(output, "P3")?;
-    writeln!(output, "{} {}", image.width, image.height)?;
-    writeln!(output, "255")?;
-
-    for y in (0..image.height).rev() {
-        for x in 0..image.width {
-            let color = image[(x, y)];
-            writeln!(output, "{} {} {}", color.red(), color.green(), color.blue())?;
+        fn index(&self, point: Point) -> &Self::Output {
+            &self.buffer[self.point_to_index(point)]
         }
     }
 
-    Ok(())
-}
+    impl IndexMut<Point> for Image {
+        fn index_mut(&mut self, point: Point) -> &mut Self::Output {
+            &mut self.buffer[self.point_to_index(point)]
+        }
+    }
+
+    pub fn write_ppm<W: Write>(image: Image, output: &mut W) -> Result<(), Error> {
+        writeln!(output, "P3")?;
+        writeln!(output, "{} {}", image.width, image.height)?;
+        writeln!(output, "255")?;
+
+        for y in (0..image.height).rev() {
+            for x in 0..image.width {
+                let color = image[(x, y)];
+                writeln!(output, "{} {} {}", color.red(), color.green(), color.blue())?;
+            }
+        }
+
+        Ok(())
+    }
