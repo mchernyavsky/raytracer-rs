@@ -1,0 +1,3 @@
+- Fix edge cases in ray collision detection
+- Optimize sphere intersection calculations
+- Add support for additional material types
