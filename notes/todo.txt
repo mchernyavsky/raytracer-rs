@@ -1,0 +1,3 @@
+- Implement reflection for materials
+- Add texture support
+- Optimize ray tracing performance
