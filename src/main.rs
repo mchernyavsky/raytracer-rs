@@ -17,15 +17,15 @@ enum Error {
 }
 
 impl From<io::Error> for Error {
-    fn from(err: io::Error) -> Self {
-        Error::IOError(err)
+    fn from(source_error: io::Error) -> Self {
+        Error::IOError(source_error)
     }
 }
 
 fn handle_error(err: &Error) -> i32 {
     match err {
-        Error::ParseError(parse_err_msg) => eprintln!("{}", parse_err_msg),
-        Error::IOError(io_err) => eprintln!("{}", io_err),
+        Error::ParseError(parse_error_message) => eprintln!("{}", parse_error_message),
+        Error::IOError(io_error_value) => eprintln!("{}", io_error_value),
     };
     1
 }
@@ -91,9 +91,9 @@ fn draw_sphere<W: Write>(output: &mut W) -> Result<(), Error> {
     fn calc_pixel(idx: usize, camera: &Camera, world: &HitList) -> Color {
         const N_SAMPLES: u32 = 100;
         let mut rng = rand::thread_rng();
-        let x = idx as u32 % IMAGE_WIDTH;
-        let y = idx as u32 / IMAGE_WIDTH;
-        let mut acc = Vec3::default();
+        let x = idx as u32 % IMAGE_WIDTH; let y = idx as u32 / IMAGE_WIDTH;
+        let mut acc =
+            Vec3::default();
         for _ in 0..N_SAMPLES {
             let u = (f64::from(x) + rng.gen::<f64>()) / f64::from(IMAGE_WIDTH);
             let v = (f64::from(y) + rng.gen::<f64>()) / f64::from(IMAGE_HEIGHT);
@@ -103,7 +103,7 @@ fn draw_sphere<W: Write>(output: &mut W) -> Result<(), Error> {
         return vec_to_color(acc / f64::from(N_SAMPLES));
 
         fn color_vec_at<T: Hit>(ray: &Ray, world: &T, depth: u32) -> Vec3 {
-            const MAX_DEPTH: u32 = 50;
+            const MAX_DEPTH: u32 = 64;
             if let Some(hit) = world.hit(ray, 0.001, std::f64::MAX) {
                 if depth >= MAX_DEPTH {
                     return Vec3::default();
