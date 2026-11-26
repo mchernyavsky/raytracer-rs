@@ -1,0 +1,26 @@
+# A probe for Air Factory (AIRF-111): a job that fails on the first attempt of a workflow run and passes on a rerun.
+name: Factory rerun probe
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      sleep:
+        description: Seconds the slow job runs
+        default: "0"
+jobs:
+  flaky-infra:
+    name: Flaky infra
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail on the first attempt
+        run: |
+          if [ "${{ github.run_attempt }}" = "1" ]; then
+            echo "infrastructure red on the first attempt"
+            exit 1
+          fi
+  slow:
+    name: Slow job
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait
+        run: sleep "${{ inputs.sleep || '0' }}"
